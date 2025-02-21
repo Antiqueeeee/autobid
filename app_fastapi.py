@@ -3,7 +3,6 @@ from fastapi.responses import JSONResponse
 from bidding_workflow import BiddingWorkflow
 import logging
 from config import Config
-import json
 from app_params import OutlineRequest, ContentRequest
 
 app = FastAPI()
@@ -14,10 +13,6 @@ async def generate_outline(request: OutlineRequest):
     async with BiddingWorkflow() as workflow:
         try:
             logger.info("Starting outline generation")
-            
-            # # Load input files
-            # logger.info("Loading input files")
-            # workflow.load_input_files()
             
             # Generate outline with parameters
             logger.info("Generating outline")
@@ -42,7 +37,9 @@ async def generate_outline(request: OutlineRequest):
             logger.info("Outline generation completed successfully")
             return JSONResponse(content={
                 "status": "success",
-                "outline": workflow.outline.to_dict()
+                "outline": workflow.outline.to_dict(),
+                "formated" : workflow.outline_to_markdown()
+                
             })
         except Exception as e:
             logger.error(f"Error in generate_outline: {str(e)}", exc_info=True)
@@ -52,54 +49,15 @@ async def generate_outline(request: OutlineRequest):
 async def generate_content(request: ContentRequest):
     workflow = BiddingWorkflow()
     try:
-        # # Load input files
-        # workflow.load_input_files()
-        
-        # # Load saved outline
-        # with open(Config.OUTLINE_DIR / 'outline.json', 'r', encoding='utf-8') as f:
-        #     outline_dict = json.load(f)
-        #     workflow.outline = workflow.parse_outline_json(outline_dict)
-        
-        # outline_dict = json.loads(request.outline)
         workflow.outline = workflow.parse_outline_json(request.outline)
-        
-        
-        # success = await workflow.generate_full_content_async(outline=workflow.outline)
         content = await workflow.generate_full_content_async(outline=workflow.outline)
         if content:
             return JSONResponse(content={"status": "success", "content": content})
         else:
             raise HTTPException(status_code=500, detail="Content generation failed")
+        
     except Exception as e:
         logger.error(f"Error in generate_content: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        await workflow.llm_client.close()
-
-@app.post("/generate_document")
-async def generate_document():
-    workflow = BiddingWorkflow()
-    try:
-        # # Load input files
-        # workflow.load_input_files()
-        
-        # Load outline
-        with open(Config.OUTLINE_DIR / 'outline.json', 'r', encoding='utf-8') as f:
-            outline_dict = json.load(f)
-            workflow.outline = workflow.parse_outline_json(outline_dict)
-        
-        # Generate full content
-        success = await workflow.generate_full_content_async()
-        if not success:
-            raise HTTPException(status_code=500, detail="Failed to generate content")
-        
-        return JSONResponse(content={
-            "status": "success",
-            "message": "Document generated successfully"
-        })
-        
-    except Exception as e:
-        logger.error(f"Error generating document: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         await workflow.llm_client.close()
