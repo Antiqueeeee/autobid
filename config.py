@@ -9,6 +9,9 @@ class Config:
     OUTPUT_DIR = BASE_DIR / "outputs"  # bidding/outputs
     OUTLINE_DIR = OUTPUT_DIR / "outline"  # bidding/outputs/outline
     LOG_DIR = BASE_DIR / "logs"  # bidding/logs
+    SERVER_NAME = "0.0.0.0"
+    SERVER_PORT = 5000
+    
     
     # LLM 配置
     LLM_API_KEY = "替换为你的openrouterkey"
