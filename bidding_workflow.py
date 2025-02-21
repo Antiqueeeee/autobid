@@ -126,9 +126,9 @@ class Outline:
 
 class BiddingWorkflow:
     def __init__(self):
-        self.tech_content = ""
-        self.score_content = ""
-        self.outline = None
+        # self.tech_content = ""
+        # self.score_content = ""
+        # self.outline = None
         self.generated_contents = {}
         self.llm_client = LLMClient()
         self.progress = GenerationProgress()
@@ -142,39 +142,39 @@ class BiddingWorkflow:
         if hasattr(self, 'llm_client'):
             await self.llm_client.close()
 
-    def load_input_files(self):
-        """加载技术要求和评分标准文件"""
-        try:
-            tech_file = Config.INPUT_DIR / 'tech.md'
-            score_file = Config.INPUT_DIR / 'score.md'
+    # def load_input_files(self):
+    #     """加载技术要求和评分标准文件"""
+    #     try:
+    #         tech_file = Config.INPUT_DIR / 'tech.md'
+    #         score_file = Config.INPUT_DIR / 'score.md'
             
-            # 检查文件是否存在
-            if not tech_file.exists():
-                logger.error(f"Tech file not found: {tech_file}")
-                raise FileNotFoundError(f"Tech file not found: {tech_file}")
-            if not score_file.exists():
-                logger.error(f"Score file not found: {score_file}")
-                raise FileNotFoundError(f"Score file not found: {score_file}")
+    #         # 检查文件是否存在
+    #         if not tech_file.exists():
+    #             logger.error(f"Tech file not found: {tech_file}")
+    #             raise FileNotFoundError(f"Tech file not found: {tech_file}")
+    #         if not score_file.exists():
+    #             logger.error(f"Score file not found: {score_file}")
+    #             raise FileNotFoundError(f"Score file not found: {score_file}")
             
-            # 检查文件是否为空
-            if tech_file.stat().st_size == 0:
-                logger.error("Tech file is empty")
-                raise ValueError("Tech file is empty")
-            if score_file.stat().st_size == 0:
-                logger.error("Score file is empty")
-                raise ValueError("Score file is empty")
+    #         # 检查文件是否为空
+    #         if tech_file.stat().st_size == 0:
+    #             logger.error("Tech file is empty")
+    #             raise ValueError("Tech file is empty")
+    #         if score_file.stat().st_size == 0:
+    #             logger.error("Score file is empty")
+    #             raise ValueError("Score file is empty")
             
-            with open(tech_file, 'r', encoding='utf-8') as f:
-                self.tech_content = f.read()
-                logger.info(f"Loaded tech file, size: {len(self.tech_content)} chars")
+    #         with open(tech_file, 'r', encoding='utf-8') as f:
+    #             self.tech_content = f.read()
+    #             logger.info(f"Loaded tech file, size: {len(self.tech_content)} chars")
             
-            with open(score_file, 'r', encoding='utf-8') as f:
-                self.score_content = f.read()
-                logger.info(f"Loaded score file, size: {len(self.score_content)} chars")
+    #         with open(score_file, 'r', encoding='utf-8') as f:
+    #             self.score_content = f.read()
+    #             logger.info(f"Loaded score file, size: {len(self.score_content)} chars")
             
-        except Exception as e:
-            logger.error(f"Error loading input files: {e}", exc_info=True)
-            raise
+    #     except Exception as e:
+    #         logger.error(f"Error loading input files: {e}", exc_info=True)
+    #         raise
             
     def clean_json_response(self, response: str) -> str:
         """清理大模型返回的 JSON 响应"""
@@ -235,24 +235,27 @@ class BiddingWorkflow:
             logger.error(f"Original response:\n{response}")
             raise
 
-    async def generate_outline(self) -> str:
+    async def generate_outline(self, tech_content=str(), score_content=str()) -> str:
         """生成大纲"""
         try:
             logger.info("=== Starting Outline Generation ===")
             
             # 初始化对话
+            
             messages = [{"role": "system", "content": Prompts.OUTLINE_SYSTEM_ROLE}]
             
             # 1. 发送技术要求
+
             messages.append({
                 "role": "user", 
-                "content": Prompts.OUTLINE_TECH_USER.format(tech_content=self.tech_content)
+                "content": Prompts.OUTLINE_TECH_USER.format(tech_content=tech_content)
             })
             
             # 2. 发送评分标准
+
             messages.append({
                 "role": "user", 
-                "content": Prompts.OUTLINE_SCORE_USER.format(score_content=self.score_content)
+                "content": Prompts.OUTLINE_SCORE_USER.format(score_content=score_content)
             })
             
             # 3. 要求生成完整大纲
@@ -507,19 +510,19 @@ class BiddingWorkflow:
             count += self.count_sections(child)
         return count
 
-    async def generate_full_content_async(self) -> bool:
+    async def generate_full_content_async(self, outline: Outline) -> bool:
         """异步生成完整文档内容"""
         start_time = time.time()
         try:
-            if not self.outline:
-                logger.error("No outline available")
-                return False
+            # if not self.outline:
+            #     logger.error("No outline available")
+            #     return False
 
             logger.info("=== Starting Content Generation ===")
             
             # 收集所有需要生成的章节
             sections_to_generate = []
-            for chapter in self.outline.body_paragraphs:
+            for chapter in outline.body_paragraphs:
                 for section in chapter.sections:
                     for sub_section in section.sub_sections:
                         sections_to_generate.append({
@@ -563,16 +566,18 @@ class BiddingWorkflow:
             
             # 处理结果
             organized_results = self._organize_results(results, sections_to_generate)
-            success = await self._save_results_async(organized_results)
-            
+            # success = await self._save_results_async(organized_results)
+            content = await self._save_results_async(organized_results)
             elapsed_time = time.time() - start_time
             logger.info(f"Content generation completed in {elapsed_time:.2f} seconds")
             
-            return success
+            return content
 
         except Exception as e:
             logger.error(f"Error generating content: {e}")
-            return False
+            
+            # return False
+            return f"Error generating content: {e}"
 
     def _organize_results(self, results: List[Dict], sections: List[Dict]) -> Dict:
         """将结果按章节组织"""
@@ -625,13 +630,16 @@ class BiddingWorkflow:
             
             content = "\n".join(content_parts)
             
-            with open(Config.OUTPUT_DIR / 'content.md', 'w', encoding='utf-8') as f:
-                f.write(content)
-            
-            return True
+            # with open(Config.OUTPUT_DIR / 'content.md', 'w', encoding='utf-8') as f:
+            #     f.write(content)
+            # return True
+            return content
+        
         except Exception as e:
             logger.error(f"Error saving results: {e}")
-            return False
+            # return False
+            
+            return f"Error saving results: {e}"
 
     def save_outline_json(self, outline_json: str):
         """保存大纲 JSON 到文件"""
