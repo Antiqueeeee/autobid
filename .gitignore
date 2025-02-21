@@ -5,7 +5,7 @@ logs/
 **/logs/
 *.py[cod]
 *$py.class
-
+outputs/
 # C extensions
 *.so
 
